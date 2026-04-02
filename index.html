@@ -2,13 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brasil IA Arthur</title>
 
 <style>
 body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
+    font-family: Segoe UI;
     background: linear-gradient(135deg, #6a0dad, #b266ff);
     display: flex;
     justify-content: center;
@@ -18,33 +16,30 @@ body {
 
 .card {
     background: white;
-    padding: 30px;
-    border-radius: 20px;
-    width: 400px;
+    padding: 25px;
+    border-radius: 15px;
+    width: 350px;
     text-align: center;
 }
 
-.step { display: none; }
-.step.active { display: block; }
-
 button {
     width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border: none;
-    border-radius: 10px;
+    padding: 10px;
     background: #6a0dad;
     color: white;
+    border: none;
+    border-radius: 8px;
+    margin-top: 10px;
 }
 
 .progress {
     height: 10px;
     background: #ddd;
+    margin-top: 10px;
     border-radius: 10px;
-    margin-top: 15px;
 }
 
-.progress-bar {
+.bar {
     height: 100%;
     width: 0%;
     background: #6a0dad;
@@ -62,109 +57,117 @@ video, audio {
 
 <div class="card">
 
-<h2>🇧🇷 Brasil IA Arthur</h2>
+<h3>🇧🇷 Brasil IA Arthur</h3>
 
-<!-- ETAPA 1 -->
-<div class="step active" id="step1">
-    <p>1️⃣ Envie seu vídeo</p>
-    <input type="file" id="fileInput">
-    <video id="videoPreview" controls></video>
-    <button onclick="goToStep2()">Continuar</button>
+<input type="file" id="file">
+<video id="video" controls></video>
+
+<button onclick="converter()">Converter</button>
+
+<div class="progress">
+    <div class="bar" id="bar"></div>
 </div>
 
-<!-- ETAPA 2 -->
-<div class="step" id="step2">
-    <p>2️⃣ Convertendo / baixando...</p>
-    <div class="progress">
-        <div class="progress-bar" id="progressBar"></div>
-    </div>
-    <p id="status"></p>
-</div>
+<p id="status"></p>
+<p id="tempo"></p>
 
-<!-- ETAPA 3 -->
-<div class="step" id="step3">
-    <p>3️⃣ Pronto!</p>
-    <audio id="audioPlayer" controls></audio>
-    <button id="downloadBtn">Baixar MP3</button>
-</div>
+<audio id="audio" controls></audio>
+<button id="baixar" style="display:none;">Baixar</button>
 
 </div>
 
 <script>
-let selectedFile, fileBase64, conversionId;
+let file, id, inicio;
 
-const fileInput = document.getElementById("fileInput");
-const video = document.getElementById("videoPreview");
-const audio = document.getElementById("audioPlayer");
-const progressBar = document.getElementById("progressBar");
-const statusText = document.getElementById("status");
+const video = document.getElementById("video");
 
-fileInput.onchange = () => {
-    selectedFile = fileInput.files[0];
-
-    video.src = URL.createObjectURL(selectedFile);
+document.getElementById("file").onchange = e => {
+    file = e.target.files[0];
+    video.src = URL.createObjectURL(file);
     video.style.display = "block";
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        fileBase64 = reader.result.split(",")[1];
-    };
-    reader.readAsDataURL(selectedFile);
 };
 
-function showStep(id) {
-    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
+async function converter() {
+    if (!file) return alert("Escolha um vídeo");
 
-function goToStep2() {
-    if (!fileBase64) return alert("Selecione um vídeo!");
+    inicio = Date.now();
 
-    showStep("step2");
+    document.getElementById("status").innerText = "Preparando...";
 
-    fetch("/.netlify/functions/convert", {
+    // 🔥 GARANTE BASE64 CERTO
+    const base64 = await toBase64(file);
+
+    document.getElementById("status").innerText = "Enviando...";
+
+    const res = await fetch("/.netlify/functions/convert", {
         method: "POST",
         body: JSON.stringify({
             input: "base64",
-            file: fileBase64,
-            filename: selectedFile.name,
+            file: base64,
+            filename: file.name,
             outputformat: "mp3"
         })
-    })
-    .then(res => res.json())
-    .then(data => {
-        conversionId = data.data.id;
-        checkStatus();
+    });
+
+    const data = await res.json();
+
+    if (!data.data) {
+        alert("Erro na API!");
+        console.log(data);
+        return;
+    }
+
+    id = data.data.id;
+
+    acompanhar();
+}
+
+// 🔥 FUNÇÃO QUE NÃO BUGA
+function toBase64(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.readAsDataURL(file);
     });
 }
 
-function checkStatus() {
-    const interval = setInterval(() => {
-        fetch(`https://api.convertio.co/convert/${conversionId}/status`)
-        .then(res => res.json())
-        .then(data => {
+function acompanhar() {
+    const intervalo = setInterval(async () => {
 
-            let percent = data.data.percent || 0;
-            progressBar.style.width = percent + "%";
-            statusText.innerText = percent + "%";
+        const res = await fetch(`https://api.convertio.co/convert/${id}/status`);
+        const data = await res.json();
 
-            if (data.data.step === "finish") {
-                clearInterval(interval);
+        const p = data.data.percent || 0;
 
-                let url = data.data.output.url;
+        document.getElementById("bar").style.width = p + "%";
 
-                showStep("step3");
+        let tempo = (Date.now() - inicio) / 1000;
 
-                audio.src = url;
-                audio.style.display = "block";
-                audio.play();
+        if (p > 5) {
+            let total = tempo / (p / 100);
+            let restante = Math.round(total - tempo);
+            document.getElementById("tempo").innerText = "Tempo restante: " + restante + "s";
+        }
 
-                document.getElementById("downloadBtn").onclick = () => {
-                    window.open(url);
-                };
-            }
+        document.getElementById("status").innerText = p + "%";
 
-        });
+        if (data.data.step === "finish") {
+            clearInterval(intervalo);
+
+            let url = data.data.output.url;
+
+            document.getElementById("status").innerText = "Pronto!";
+
+            const audio = document.getElementById("audio");
+            audio.src = url;
+            audio.style.display = "block";
+            audio.play();
+
+            const btn = document.getElementById("baixar");
+            btn.style.display = "block";
+            btn.onclick = () => window.open(url);
+        }
+
     }, 2000);
 }
 </script>
