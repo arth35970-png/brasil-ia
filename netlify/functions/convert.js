@@ -1,21 +1,32 @@
 export async function handler(event) {
-  const API_KEY = "ffeadb6f059e0891b4d8a33ce7e56f95";
+  const API_KEY = "COLOQUE_SUA_API_AQUI";
 
-  const body = JSON.parse(event.body);
+  try {
+    const body = JSON.parse(event.body);
 
-  const response = await 
-    method: "POST",fetch("/.netlify/functions/convert", {
-    headers: {
-      "Authorization": "Bearer " + API_KEY,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+    const response = await fetch("https://api.convertio.co/convert", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(data)
-  };
+    return {
+      statusCode: 200,
+      body: JSON.stringify(data)
+    };
+
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Erro no backend",
+        details: error.message
+      })
+    };
+  }
 }
