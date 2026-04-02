@@ -31,9 +31,7 @@ body {
     box-shadow: 0 0 25px rgba(106,13,173,0.4);
 }
 
-h1 {
-    color: #6a0dad;
-}
+h1 { color: #6a0dad; }
 
 .drop-area {
     border: 2px dashed #6a0dad;
@@ -41,11 +39,6 @@ h1 {
     margin: 20px 0;
     border-radius: 15px;
     cursor: pointer;
-    transition: 0.3s;
-}
-
-.drop-area:hover {
-    background: #f3e8ff;
 }
 
 button {
@@ -55,21 +48,18 @@ button {
     border-radius: 10px;
     background: #6a0dad;
     color: white;
-    font-size: 16px;
-    cursor: pointer;
     margin-top: 10px;
+    cursor: pointer;
 }
 
-button:hover {
-    background: #4b0082;
-}
+button:hover { background: #4b0082; }
 
 .download-btn {
     background: #28a745;
     display: none;
 }
 
-video {
+video, audio {
     width: 100%;
     margin-top: 15px;
     border-radius: 10px;
@@ -78,7 +68,7 @@ video {
 
 .progress {
     width: 100%;
-    height: 10px;
+    height: 12px;
     background: #ddd;
     border-radius: 10px;
     margin-top: 15px;
@@ -88,13 +78,11 @@ video {
 .progress-bar {
     height: 100%;
     width: 0%;
-    background: #6a0dad;
-    transition: width 0.4s;
+    background: linear-gradient(90deg, #6a0dad, #b266ff);
 }
 
-.status {
-    margin-top: 10px;
-}
+.status { margin-top: 10px; }
+.tempo { font-size: 13px; color: gray; }
 
 .loader {
     display: none;
@@ -107,14 +95,15 @@ video {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.history {
+    margin-top: 20px;
+    text-align: left;
+    font-size: 13px;
 }
 
-footer {
-    text-align: center;
-    padding: 10px;
-}
+footer { text-align: center; padding: 10px; }
 </style>
 </head>
 
@@ -122,26 +111,32 @@ footer {
 
 <div class="container">
 <div class="card">
-    <h1>🇧🇷 Brasil IA Arthur</h1>
-    <p>Converter MP4 → MP3</p>
 
-    <div class="drop-area" id="dropArea">
-        Arraste ou clique para enviar
-    </div>
+<h1>🇧🇷 Brasil IA Arthur</h1>
+<p>Converter MP4 → MP3</p>
 
-    <input type="file" id="fileInput" hidden>
+<div class="drop-area" id="dropArea">
+Arraste ou clique para enviar
+</div>
 
-    <video id="videoPreview" controls></video>
+<input type="file" id="fileInput" hidden>
 
-    <button onclick="startConversion()">Converter</button>
-    <button class="download-btn" id="downloadBtn">Baixar MP3</button>
+<video id="videoPreview" controls></video>
+<audio id="audioPlayer" controls></audio>
 
-    <div class="progress">
-        <div class="progress-bar" id="progressBar"></div>
-    </div>
+<button onclick="startConversion()">Converter</button>
+<button class="download-btn" id="downloadBtn">Baixar MP3</button>
 
-    <div class="loader" id="loader"></div>
-    <div class="status" id="status"></div>
+<div class="progress">
+<div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="loader" id="loader"></div>
+<div class="status" id="status"></div>
+<div class="tempo" id="tempo"></div>
+
+<div class="history" id="history"></div>
+
 </div>
 </div>
 
@@ -151,94 +146,132 @@ Instrutor Joner - Oficina de Informática Básica © 2026
 
 <script>
 let selectedFile, fileBase64, conversionId;
+let startTime;
 
 const dropArea = document.getElementById("dropArea");
 const fileInput = document.getElementById("fileInput");
 const statusText = document.getElementById("status");
+const tempoText = document.getElementById("tempo");
 const progressBar = document.getElementById("progressBar");
 const downloadBtn = document.getElementById("downloadBtn");
 const loader = document.getElementById("loader");
 const video = document.getElementById("videoPreview");
+const audio = document.getElementById("audioPlayer");
+const historyDiv = document.getElementById("history");
 
 dropArea.onclick = () => fileInput.click();
-
 fileInput.onchange = () => handleFile(fileInput.files[0]);
 
 dropArea.ondrop = (e) => {
-    e.preventDefault();
-    handleFile(e.dataTransfer.files[0]);
+e.preventDefault();
+handleFile(e.dataTransfer.files[0]);
 };
 
 dropArea.ondragover = e => e.preventDefault();
 
 function handleFile(file) {
-    if (!file) return;
+if (!file) return;
 
-    selectedFile = file;
-    dropArea.innerText = file.name;
+selectedFile = file;
+dropArea.innerText = file.name;
 
-    // 🎥 Preview rápido
-    const url = URL.createObjectURL(file);
-    video.src = url;
-    video.style.display = "block";
+video.src = URL.createObjectURL(file);
+video.style.display = "block";
 
-    // ⚡ Conversão mais rápida (sem travar)
-    const reader = new FileReader();
-    reader.onload = () => {
-        fileBase64 = reader.result.split(",")[1];
-    };
-    reader.readAsDataURL(file);
+const reader = new FileReader();
+reader.onload = () => {
+fileBase64 = reader.result.split(",")[1];
+};
+reader.readAsDataURL(file);
 }
 
 function startConversion() {
-    if (!fileBase64) return alert("Selecione um arquivo!");
+if (!fileBase64) return alert("Selecione um arquivo!");
 
-    statusText.innerText = "Enviando...";
-    loader.style.display = "block";
-    progressBar.style.width = "30%";
+startTime = Date.now();
 
-    fetch("/.netlify/functions/convert", {
-        method: "POST",
-        body: JSON.stringify({
-            input: "base64",
-            file: fileBase64,
-            filename: selectedFile.name,
-            outputformat: "mp3"
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        conversionId = data.data.id;
-        checkStatus();
-    });
+statusText.innerText = "Enviando...";
+loader.style.display = "block";
+
+fetch("/.netlify/functions/convert", {
+method: "POST",
+body: JSON.stringify({
+input: "base64",
+file: fileBase64,
+filename: selectedFile.name,
+outputformat: "mp3"
+})
+})
+.then(res => res.json())
+.then(data => {
+conversionId = data.data.id;
+checkStatus();
+});
 }
 
 function checkStatus() {
-    const interval = setInterval(() => {
-        fetch(`https://api.convertio.co/convert/${conversionId}/status`)
-        .then(res => res.json())
-        .then(data => {
-            let step = data.data.step;
+const interval = setInterval(() => {
 
-            if (step === "convert") {
-                statusText.innerText = "Convertendo...";
-                progressBar.style.width = "70%";
-            }
+fetch(`https://api.convertio.co/convert/${conversionId}/status`)
+.then(res => res.json())
+.then(data => {
 
-            if (step === "finish") {
-                clearInterval(interval);
-                progressBar.style.width = "100%";
-                statusText.innerText = "Pronto!";
-                loader.style.display = "none";
+const percent = data.data.percent || 0;
+const step = data.data.step;
 
-                downloadBtn.style.display = "block";
-                downloadBtn.onclick = () => {
-                    window.open(data.data.output.url);
-                };
-            }
-        });
-    }, 3000); // 🔥 MAIS RÁPIDO (antes era 4s)
+if (percent > 0) {
+progressBar.style.width = percent + "%";
 }
+
+let elapsed = (Date.now() - startTime) / 1000;
+
+if (percent > 5) {
+let total = elapsed / (percent / 100);
+let remaining = Math.round(total - elapsed);
+tempoText.innerText = "Tempo restante: " + remaining + "s";
+}
+
+if (step === "convert") statusText.innerText = "Convertendo...";
+
+if (step === "finish") {
+clearInterval(interval);
+statusText.innerText = "Pronto!";
+loader.style.display = "none";
+progressBar.style.width = "100%";
+
+let url = data.data.output.url;
+
+downloadBtn.style.display = "block";
+downloadBtn.onclick = () => window.open(url);
+
+// 🎧 tocar áudio
+audio.src = url;
+audio.style.display = "block";
+audio.play();
+
+// 📁 salvar histórico
+saveHistory(selectedFile.name, url);
+loadHistory();
+}
+
+});
+
+}, 2000);
+}
+
+function saveHistory(name, url) {
+let list = JSON.parse(localStorage.getItem("historico") || "[]");
+list.unshift({ name, url });
+localStorage.setItem("historico", JSON.stringify(list.slice(0,5)));
+}
+
+function loadHistory() {
+let list = JSON.parse(localStorage.getItem("historico") || "[]");
+historyDiv.innerHTML = "<b>Histórico:</b><br>" +
+list.map(item => `<a href="${item.url}" target="_blank">${item.name}</a>`).join("<br>");
+}
+
+loadHistory();
 </script>
 
 </body>
