@@ -1,4 +1,4 @@
-fetch("/.netlify/functions/convert", {<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -13,12 +13,6 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    animation: bgMove 6s infinite alternate;
-}
-
-@keyframes bgMove {
-    0% {background-position: left;}
-    100% {background-position: right;}
 }
 
 .container {
@@ -34,19 +28,16 @@ body {
     border-radius: 20px;
     width: 420px;
     text-align: center;
-    box-shadow: 0 0 30px rgba(106,13,173,0.5);
-    animation: fadeIn 1s ease;
+    box-shadow: 0 0 25px rgba(106,13,173,0.4);
 }
 
 h1 {
     color: #6a0dad;
-    margin-bottom: 5px;
-    text-shadow: 0 0 10px rgba(178,102,255,0.6);
 }
 
 .drop-area {
     border: 2px dashed #6a0dad;
-    padding: 35px;
+    padding: 30px;
     margin: 20px 0;
     border-radius: 15px;
     cursor: pointer;
@@ -55,7 +46,6 @@ h1 {
 
 .drop-area:hover {
     background: #f3e8ff;
-    transform: scale(1.02);
 }
 
 button {
@@ -68,17 +58,21 @@ button {
     font-size: 16px;
     cursor: pointer;
     margin-top: 10px;
-    transition: 0.3s;
 }
 
 button:hover {
-    transform: scale(1.05);
     background: #4b0082;
-    box-shadow: 0 0 15px rgba(178,102,255,0.8);
 }
 
 .download-btn {
     background: #28a745;
+    display: none;
+}
+
+video {
+    width: 100%;
+    margin-top: 15px;
+    border-radius: 10px;
     display: none;
 }
 
@@ -94,32 +88,23 @@ button:hover {
 .progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #6a0dad, #b266ff);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {opacity: 0.6;}
-    50% {opacity: 1;}
-    100% {opacity: 0.6;}
+    background: #6a0dad;
+    transition: width 0.4s;
 }
 
 .status {
     margin-top: 10px;
-    font-size: 14px;
 }
 
 .loader {
     display: none;
-    margin-top: 10px;
+    margin: 10px auto;
     border: 4px solid #eee;
     border-top: 4px solid #6a0dad;
     border-radius: 50%;
     width: 25px;
     height: 25px;
     animation: spin 1s linear infinite;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 @keyframes spin {
@@ -129,12 +114,6 @@ button:hover {
 footer {
     text-align: center;
     padding: 10px;
-    background: rgba(255,255,255,0.2);
-}
-
-@keyframes fadeIn {
-    from {opacity:0; transform: translateY(20px);}
-    to {opacity:1; transform: translateY(0);}
 }
 </style>
 </head>
@@ -152,6 +131,8 @@ footer {
 
     <input type="file" id="fileInput" hidden>
 
+    <video id="videoPreview" controls></video>
+
     <button onclick="startConversion()">Converter</button>
     <button class="download-btn" id="downloadBtn">Baixar MP3</button>
 
@@ -160,7 +141,6 @@ footer {
     </div>
 
     <div class="loader" id="loader"></div>
-
     <div class="status" id="status"></div>
 </div>
 </div>
@@ -170,8 +150,6 @@ Instrutor Joner - Oficina de Informática Básica © 2026
 </footer>
 
 <script>
-const API_KEY = "ffeadb6f059e0891b4d8a33ce7e56f95";
-
 let selectedFile, fileBase64, conversionId;
 
 const dropArea = document.getElementById("dropArea");
@@ -180,6 +158,7 @@ const statusText = document.getElementById("status");
 const progressBar = document.getElementById("progressBar");
 const downloadBtn = document.getElementById("downloadBtn");
 const loader = document.getElementById("loader");
+const video = document.getElementById("videoPreview");
 
 dropArea.onclick = () => fileInput.click();
 
@@ -198,6 +177,12 @@ function handleFile(file) {
     selectedFile = file;
     dropArea.innerText = file.name;
 
+    // 🎥 Preview rápido
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.style.display = "block";
+
+    // ⚡ Conversão mais rápida (sem travar)
     const reader = new FileReader();
     reader.onload = () => {
         fileBase64 = reader.result.split(",")[1];
@@ -209,17 +194,12 @@ function startConversion() {
     if (!fileBase64) return alert("Selecione um arquivo!");
 
     statusText.innerText = "Enviando...";
-    progressBar.style.width = "20%";
     loader.style.display = "block";
+    progressBar.style.width = "30%";
 
-    fetch("https://api.convertio.co/convert", {
+    fetch("/.netlify/functions/convert", {
         method: "POST",
-        headers: {
-            "Authorization": "Bearer " + API_KEY,
-            "Content-Type": "application/json"
-        },
         body: JSON.stringify({
-            apikey: API_KEY,
             input: "base64",
             file: fileBase64,
             filename: selectedFile.name,
@@ -235,16 +215,15 @@ function startConversion() {
 
 function checkStatus() {
     const interval = setInterval(() => {
-        fetch(`https://api.convertio.co/convert/${conversionId}/status`, {
-            headers: {
-                "Authorization": "Bearer " + API_KEY
-            }
-        })
+        fetch(`https://api.convertio.co/convert/${conversionId}/status`)
         .then(res => res.json())
         .then(data => {
             let step = data.data.step;
 
-            if (step === "convert") progressBar.style.width = "60%";
+            if (step === "convert") {
+                statusText.innerText = "Convertendo...";
+                progressBar.style.width = "70%";
+            }
 
             if (step === "finish") {
                 clearInterval(interval);
@@ -258,7 +237,7 @@ function checkStatus() {
                 };
             }
         });
-    }, 4000);
+    }, 3000); // 🔥 MAIS RÁPIDO (antes era 4s)
 }
 </script>
 
