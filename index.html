@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brasil IA Arthur</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #6a0dad, #b266ff);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    animation: bgMove 6s infinite alternate;
+}
+
+@keyframes bgMove {
+    0% {background-position: left;}
+    100% {background-position: right;}
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card {
+    background: rgba(255,255,255,0.95);
+    padding: 30px;
+    border-radius: 20px;
+    width: 420px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(106,13,173,0.5);
+    animation: fadeIn 1s ease;
+}
+
+h1 {
+    color: #6a0dad;
+    margin-bottom: 5px;
+    text-shadow: 0 0 10px rgba(178,102,255,0.6);
+}
+
+.drop-area {
+    border: 2px dashed #6a0dad;
+    padding: 35px;
+    margin: 20px 0;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.drop-area:hover {
+    background: #f3e8ff;
+    transform: scale(1.02);
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #6a0dad;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: 0.3s;
+}
+
+button:hover {
+    transform: scale(1.05);
+    background: #4b0082;
+    box-shadow: 0 0 15px rgba(178,102,255,0.8);
+}
+
+.download-btn {
+    background: #28a745;
+    display: none;
+}
+
+.progress {
+    width: 100%;
+    height: 10px;
+    background: #ddd;
+    border-radius: 10px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6a0dad, #b266ff);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {opacity: 0.6;}
+    50% {opacity: 1;}
+    100% {opacity: 0.6;}
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.loader {
+    display: none;
+    margin-top: 10px;
+    border: 4px solid #eee;
+    border-top: 4px solid #6a0dad;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    animation: spin 1s linear infinite;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255,255,255,0.2);
+}
+
+@keyframes fadeIn {
+    from {opacity:0; transform: translateY(20px);}
+    to {opacity:1; transform: translateY(0);}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+    <h1>🇧🇷 Brasil IA Arthur</h1>
+    <p>Converter MP4 → MP3</p>
+
+    <div class="drop-area" id="dropArea">
+        Arraste ou clique para enviar
+    </div>
+
+    <input type="file" id="fileInput" hidden>
+
+    <button onclick="startConversion()">Converter</button>
+    <button class="download-btn" id="downloadBtn">Baixar MP3</button>
+
+    <div class="progress">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <div class="status" id="status"></div>
+</div>
+</div>
+
+<footer>
+Instrutor Joner - Oficina de Informática Básica © 2026
+</footer>
+
+<script>
+const API_KEY = "ffeadb6f059e0891b4d8a33ce7e56f95";
+
+let selectedFile, fileBase64, conversionId;
+
+const dropArea = document.getElementById("dropArea");
+const fileInput = document.getElementById("fileInput");
+const statusText = document.getElementById("status");
+const progressBar = document.getElementById("progressBar");
+const downloadBtn = document.getElementById("downloadBtn");
+const loader = document.getElementById("loader");
+
+dropArea.onclick = () => fileInput.click();
+
+fileInput.onchange = () => handleFile(fileInput.files[0]);
+
+dropArea.ondrop = (e) => {
+    e.preventDefault();
+    handleFile(e.dataTransfer.files[0]);
+};
+
+dropArea.ondragover = e => e.preventDefault();
+
+function handleFile(file) {
+    if (!file) return;
+
+    selectedFile = file;
+    dropArea.innerText = file.name;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        fileBase64 = reader.result.split(",")[1];
+    };
+    reader.readAsDataURL(file);
+}
+
+function startConversion() {
+    if (!fileBase64) return alert("Selecione um arquivo!");
+
+    statusText.innerText = "Enviando...";
+    progressBar.style.width = "20%";
+    loader.style.display = "block";
+
+    fetch("https://api.convertio.co/convert", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + API_KEY,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            apikey: API_KEY,
+            input: "base64",
+            file: fileBase64,
+            filename: selectedFile.name,
+            outputformat: "mp3"
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        conversionId = data.data.id;
+        checkStatus();
+    });
+}
+
+function checkStatus() {
+    const interval = setInterval(() => {
+        fetch(`https://api.convertio.co/convert/${conversionId}/status`, {
+            headers: {
+                "Authorization": "Bearer " + API_KEY
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            let step = data.data.step;
+
+            if (step === "convert") progressBar.style.width = "60%";
+
+            if (step === "finish") {
+                clearInterval(interval);
+                progressBar.style.width = "100%";
+                statusText.innerText = "Pronto!";
+                loader.style.display = "none";
+
+                downloadBtn.style.display = "block";
+                downloadBtn.onclick = () => {
+                    window.open(data.data.output.url);
+                };
+            }
+        });
+    }, 4000);
+}
+</script>
+
+</body>
+</html>
