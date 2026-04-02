@@ -11,267 +11,162 @@ body {
     font-family: "Segoe UI", sans-serif;
     background: linear-gradient(135deg, #6a0dad, #b266ff);
     display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-.container {
-    flex: 1;
-    display: flex;
     justify-content: center;
     align-items: center;
+    height: 100vh;
 }
 
 .card {
-    background: rgba(255,255,255,0.95);
+    background: white;
     padding: 30px;
     border-radius: 20px;
-    width: 420px;
+    width: 400px;
     text-align: center;
-    box-shadow: 0 0 25px rgba(106,13,173,0.4);
 }
 
-h1 { color: #6a0dad; }
-
-.drop-area {
-    border: 2px dashed #6a0dad;
-    padding: 30px;
-    margin: 20px 0;
-    border-radius: 15px;
-    cursor: pointer;
-}
+.step { display: none; }
+.step.active { display: block; }
 
 button {
     width: 100%;
-    padding: 15px;
+    padding: 12px;
+    margin-top: 10px;
     border: none;
     border-radius: 10px;
     background: #6a0dad;
     color: white;
-    margin-top: 10px;
-    cursor: pointer;
-}
-
-button:hover { background: #4b0082; }
-
-.download-btn {
-    background: #28a745;
-    display: none;
-}
-
-video, audio {
-    width: 100%;
-    margin-top: 15px;
-    border-radius: 10px;
-    display: none;
 }
 
 .progress {
-    width: 100%;
-    height: 12px;
+    height: 10px;
     background: #ddd;
     border-radius: 10px;
     margin-top: 15px;
-    overflow: hidden;
 }
 
 .progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #6a0dad, #b266ff);
+    background: #6a0dad;
 }
 
-.status { margin-top: 10px; }
-.tempo { font-size: 13px; color: gray; }
-
-.loader {
+video, audio {
+    width: 100%;
+    margin-top: 10px;
     display: none;
-    margin: 10px auto;
-    border: 4px solid #eee;
-    border-top: 4px solid #6a0dad;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    animation: spin 1s linear infinite;
 }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.history {
-    margin-top: 20px;
-    text-align: left;
-    font-size: 13px;
-}
-
-footer { text-align: center; padding: 10px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
 <div class="card">
 
-<h1>🇧🇷 Brasil IA Arthur</h1>
-<p>Converter MP4 → MP3</p>
+<h2>🇧🇷 Brasil IA Arthur</h2>
 
-<div class="drop-area" id="dropArea">
-Arraste ou clique para enviar
+<!-- ETAPA 1 -->
+<div class="step active" id="step1">
+    <p>1️⃣ Envie seu vídeo</p>
+    <input type="file" id="fileInput">
+    <video id="videoPreview" controls></video>
+    <button onclick="goToStep2()">Continuar</button>
 </div>
 
-<input type="file" id="fileInput" hidden>
-
-<video id="videoPreview" controls></video>
-<audio id="audioPlayer" controls></audio>
-
-<button onclick="startConversion()">Converter</button>
-<button class="download-btn" id="downloadBtn">Baixar MP3</button>
-
-<div class="progress">
-<div class="progress-bar" id="progressBar"></div>
+<!-- ETAPA 2 -->
+<div class="step" id="step2">
+    <p>2️⃣ Convertendo / baixando...</p>
+    <div class="progress">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <p id="status"></p>
 </div>
 
-<div class="loader" id="loader"></div>
-<div class="status" id="status"></div>
-<div class="tempo" id="tempo"></div>
-
-<div class="history" id="history"></div>
-
-</div>
+<!-- ETAPA 3 -->
+<div class="step" id="step3">
+    <p>3️⃣ Pronto!</p>
+    <audio id="audioPlayer" controls></audio>
+    <button id="downloadBtn">Baixar MP3</button>
 </div>
 
-<footer>
-Instrutor Joner - Oficina de Informática Básica © 2026
-</footer>
+</div>
 
 <script>
 let selectedFile, fileBase64, conversionId;
-let startTime;
 
-const dropArea = document.getElementById("dropArea");
 const fileInput = document.getElementById("fileInput");
-const statusText = document.getElementById("status");
-const tempoText = document.getElementById("tempo");
-const progressBar = document.getElementById("progressBar");
-const downloadBtn = document.getElementById("downloadBtn");
-const loader = document.getElementById("loader");
 const video = document.getElementById("videoPreview");
 const audio = document.getElementById("audioPlayer");
-const historyDiv = document.getElementById("history");
+const progressBar = document.getElementById("progressBar");
+const statusText = document.getElementById("status");
 
-dropArea.onclick = () => fileInput.click();
-fileInput.onchange = () => handleFile(fileInput.files[0]);
+fileInput.onchange = () => {
+    selectedFile = fileInput.files[0];
 
-dropArea.ondrop = (e) => {
-e.preventDefault();
-handleFile(e.dataTransfer.files[0]);
+    video.src = URL.createObjectURL(selectedFile);
+    video.style.display = "block";
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        fileBase64 = reader.result.split(",")[1];
+    };
+    reader.readAsDataURL(selectedFile);
 };
 
-dropArea.ondragover = e => e.preventDefault();
-
-function handleFile(file) {
-if (!file) return;
-
-selectedFile = file;
-dropArea.innerText = file.name;
-
-video.src = URL.createObjectURL(file);
-video.style.display = "block";
-
-const reader = new FileReader();
-reader.onload = () => {
-fileBase64 = reader.result.split(",")[1];
-};
-reader.readAsDataURL(file);
+function showStep(id) {
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
 }
 
-function startConversion() {
-if (!fileBase64) return alert("Selecione um arquivo!");
+function goToStep2() {
+    if (!fileBase64) return alert("Selecione um vídeo!");
 
-startTime = Date.now();
+    showStep("step2");
 
-statusText.innerText = "Enviando...";
-loader.style.display = "block";
-
-fetch("/.netlify/functions/convert", {
-method: "POST",
-body: JSON.stringify({
-input: "base64",
-file: fileBase64,
-filename: selectedFile.name,
-outputformat: "mp3"
-})
-})
-.then(res => res.json())
-.then(data => {
-conversionId = data.data.id;
-checkStatus();
-});
+    fetch("/.netlify/functions/convert", {
+        method: "POST",
+        body: JSON.stringify({
+            input: "base64",
+            file: fileBase64,
+            filename: selectedFile.name,
+            outputformat: "mp3"
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        conversionId = data.data.id;
+        checkStatus();
+    });
 }
 
 function checkStatus() {
-const interval = setInterval(() => {
+    const interval = setInterval(() => {
+        fetch(`https://api.convertio.co/convert/${conversionId}/status`)
+        .then(res => res.json())
+        .then(data => {
 
-fetch(`https://api.convertio.co/convert/${conversionId}/status`)
-.then(res => res.json())
-.then(data => {
+            let percent = data.data.percent || 0;
+            progressBar.style.width = percent + "%";
+            statusText.innerText = percent + "%";
 
-const percent = data.data.percent || 0;
-const step = data.data.step;
+            if (data.data.step === "finish") {
+                clearInterval(interval);
 
-if (percent > 0) {
-progressBar.style.width = percent + "%";
+                let url = data.data.output.url;
+
+                showStep("step3");
+
+                audio.src = url;
+                audio.style.display = "block";
+                audio.play();
+
+                document.getElementById("downloadBtn").onclick = () => {
+                    window.open(url);
+                };
+            }
+
+        });
+    }, 2000);
 }
-
-let elapsed = (Date.now() - startTime) / 1000;
-
-if (percent > 5) {
-let total = elapsed / (percent / 100);
-let remaining = Math.round(total - elapsed);
-tempoText.innerText = "Tempo restante: " + remaining + "s";
-}
-
-if (step === "convert") statusText.innerText = "Convertendo...";
-
-if (step === "finish") {
-clearInterval(interval);
-statusText.innerText = "Pronto!";
-loader.style.display = "none";
-progressBar.style.width = "100%";
-
-let url = data.data.output.url;
-
-downloadBtn.style.display = "block";
-downloadBtn.onclick = () => window.open(url);
-
-// 🎧 tocar áudio
-audio.src = url;
-audio.style.display = "block";
-audio.play();
-
-// 📁 salvar histórico
-saveHistory(selectedFile.name, url);
-loadHistory();
-}
-
-});
-
-}, 2000);
-}
-
-function saveHistory(name, url) {
-let list = JSON.parse(localStorage.getItem("historico") || "[]");
-list.unshift({ name, url });
-localStorage.setItem("historico", JSON.stringify(list.slice(0,5)));
-}
-
-function loadHistory() {
-let list = JSON.parse(localStorage.getItem("historico") || "[]");
-historyDiv.innerHTML = "<b>Histórico:</b><br>" +
-list.map(item => `<a href="${item.url}" target="_blank">${item.name}</a>`).join("<br>");
-}
-
-loadHistory();
 </script>
 
 </body>
