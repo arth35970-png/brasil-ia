@@ -3,8 +3,8 @@ export async function handler(event) {
 
   const body = JSON.parse(event.body);
 
-  const response = await fetch("https://api.convertio.co/convert", {
-    method: "POST",
+  const response = await 
+    method: "POST",fetch("/.netlify/functions/convert", {
     headers: {
       "Authorization": "Bearer " + API_KEY,
       "Content-Type": "application/json"
