@@ -18,9 +18,12 @@ body {
     background: white;
     padding: 25px;
     border-radius: 15px;
-    width: 350px;
+    width: 380px;
     text-align: center;
 }
+
+.step { display: none; }
+.step.active { display: block; }
 
 button {
     width: 100%;
@@ -50,6 +53,12 @@ video, audio {
     margin-top: 10px;
     display: none;
 }
+
+.history {
+    margin-top: 15px;
+    font-size: 13px;
+    text-align: left;
+}
 </style>
 </head>
 
@@ -59,78 +68,113 @@ video, audio {
 
 <h3>🇧🇷 Brasil IA Arthur</h3>
 
-<input type="file" id="file">
-<video id="video" controls></video>
-
-<button onclick="converter()">Converter</button>
-
-<div class="progress">
-    <div class="bar" id="bar"></div>
+<!-- ETAPA 1 -->
+<div class="step active" id="step1">
+    <p>1️⃣ Envie o vídeo</p>
+    <input type="file" id="file">
+    <video id="video" controls></video>
+    <button onclick="iniciar()">Converter</button>
 </div>
 
-<p id="status"></p>
-<p id="tempo"></p>
+<!-- ETAPA 2 -->
+<div class="step" id="step2">
+    <p>2️⃣ Convertendo...</p>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <p id="status"></p>
+    <p id="tempo"></p>
+</div>
 
-<audio id="audio" controls></audio>
-<button id="baixar" style="display:none;">Baixar</button>
+<!-- ETAPA 3 -->
+<div class="step" id="step3">
+    <p>3️⃣ Pronto!</p>
+    <audio id="audio" controls></audio>
+    <button id="baixar">Baixar</button>
+
+    <div class="history" id="history"></div>
+</div>
 
 </div>
 
 <script>
 let file, id, inicio;
 
+// elementos
 const video = document.getElementById("video");
+const audio = document.getElementById("audio");
 
+// upload
 document.getElementById("file").onchange = e => {
     file = e.target.files[0];
     video.src = URL.createObjectURL(file);
     video.style.display = "block";
 };
 
-async function converter() {
+// troca etapa
+function step(id) {
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+// iniciar conversão
+async function iniciar() {
     if (!file) return alert("Escolha um vídeo");
 
     inicio = Date.now();
+    step("step2");
 
     document.getElementById("status").innerText = "Preparando...";
 
-    // 🔥 GARANTE BASE64 CERTO
     const base64 = await toBase64(file);
 
     document.getElementById("status").innerText = "Enviando...";
 
-    const res = await fetch("/.netlify/functions/convert", {
-        method: "POST",
-        body: JSON.stringify({
-            input: "base64",
-            file: base64,
-            filename: file.name,
-            outputformat: "mp3"
-        })
-    });
+    let res;
+
+    try {
+        res = await fetch("/.netlify/functions/convert", {
+            method: "POST",
+            body: JSON.stringify({
+                input: "base64",
+                file: base64,
+                filename: file.name,
+                outputformat: "mp3"
+            })
+        });
+    } catch (e) {
+        alert("❌ BACKEND NÃO ESTÁ SENDO USADO!\nVerifique Netlify Functions.");
+        step("step1");
+        return;
+    }
+
+    if (!res.ok) {
+        alert("❌ Erro no backend!");
+        step("step1");
+        return;
+    }
 
     const data = await res.json();
 
     if (!data.data) {
-        alert("Erro na API!");
+        alert("❌ API não respondeu!");
         console.log(data);
+        step("step1");
         return;
     }
 
     id = data.data.id;
-
     acompanhar();
 }
 
-// 🔥 FUNÇÃO QUE NÃO BUGA
+// base64
 function toBase64(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.readAsDataURL(file);
+    return new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(",")[1]);
+        r.readAsDataURL(file);
     });
 }
 
+// acompanhar
 function acompanhar() {
     const intervalo = setInterval(async () => {
 
@@ -140,6 +184,7 @@ function acompanhar() {
         const p = data.data.percent || 0;
 
         document.getElementById("bar").style.width = p + "%";
+        document.getElementById("status").innerText = p + "%";
 
         let tempo = (Date.now() - inicio) / 1000;
 
@@ -149,27 +194,41 @@ function acompanhar() {
             document.getElementById("tempo").innerText = "Tempo restante: " + restante + "s";
         }
 
-        document.getElementById("status").innerText = p + "%";
-
         if (data.data.step === "finish") {
             clearInterval(intervalo);
 
             let url = data.data.output.url;
 
-            document.getElementById("status").innerText = "Pronto!";
+            step("step3");
 
-            const audio = document.getElementById("audio");
             audio.src = url;
             audio.style.display = "block";
             audio.play();
 
-            const btn = document.getElementById("baixar");
-            btn.style.display = "block";
-            btn.onclick = () => window.open(url);
+            document.getElementById("baixar").onclick = () => window.open(url);
+
+            salvarHistorico(file.name, url);
+            carregarHistorico();
         }
 
     }, 2000);
 }
+
+// histórico
+function salvarHistorico(nome, url) {
+    let h = JSON.parse(localStorage.getItem("hist") || "[]");
+    h.unshift({nome, url});
+    localStorage.setItem("hist", JSON.stringify(h.slice(0,5)));
+}
+
+function carregarHistorico() {
+    let h = JSON.parse(localStorage.getItem("hist") || "[]");
+    document.getElementById("history").innerHTML =
+        "<b>Histórico:</b><br>" +
+        h.map(i => `<a href="${i.url}" target="_blank">${i.nome}</a>`).join("<br>");
+}
+
+carregarHistorico();
 </script>
 
 </body>
