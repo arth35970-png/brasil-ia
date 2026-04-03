@@ -1,5 +1,5 @@
 export async function handler(event) {
-  const API_KEY = "COLE_SUA_API_KEY_AQUI";
+  const API_KEY = "4719ae74f413d999fb2a28b6b277ea0f";
 
   try {
     const body = JSON.parse(event.body);
