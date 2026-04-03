@@ -1,5 +1,5 @@
 export async function handler(event) {
-  const API_KEY = "371e940c917d2aa29e2af56ad6f2394b";
+  const API_KEY = "COLE_SUA_API_KEY_AQUI";
 
   try {
     const body = JSON.parse(event.body);
@@ -10,12 +10,7 @@ export async function handler(event) {
         "Authorization": "Bearer " + API_KEY,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        input: "base64",
-        file: body.file,
-        filename: body.filename,
-        outputformat: "mp3"
-      })
+      body: JSON.stringify(body)
     });
 
     const data = await response.json();
@@ -25,10 +20,10 @@ export async function handler(event) {
       body: JSON.stringify(data)
     };
 
-  } catch (err) {
+  } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: error.message })
     };
   }
 }
