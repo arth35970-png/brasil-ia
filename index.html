@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
 
+<!-- FFmpeg -->
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
 
 <style>
@@ -117,7 +118,7 @@ function step(id) {
     document.getElementById(id).classList.add("active");
 }
 
-// iniciar conversão
+// iniciar
 async function start() {
     if (!file) return alert("Escolha um vídeo");
 
@@ -126,6 +127,7 @@ async function start() {
 
     document.getElementById("status").innerText = "Carregando motor...";
 
+    // carregar ffmpeg
     if (!ffmpeg.isLoaded()) {
         await ffmpeg.load();
     }
@@ -136,10 +138,12 @@ async function start() {
 
     ffmpeg.setProgress(({ ratio }) => {
         let percent = Math.round(ratio * 100);
+
         document.getElementById("bar").style.width = percent + "%";
         document.getElementById("status").innerText = percent + "%";
 
         let tempo = (Date.now() - inicio) / 1000;
+
         if (percent > 5) {
             let total = tempo / (percent / 100);
             let restante = Math.round(total - tempo);
@@ -147,11 +151,18 @@ async function start() {
         }
     });
 
-    await ffmpeg.run("-i", "input.mp4", "-vn", "-acodec", "libmp3lame", "output.mp3");
+    await ffmpeg.run(
+        "-i", "input.mp4",
+        "-vn",
+        "-acodec", "libmp3lame",
+        "output.mp3"
+    );
 
     const data = ffmpeg.FS("readFile", "output.mp3");
 
-    const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mp3" }));
+    const url = URL.createObjectURL(
+        new Blob([data.buffer], { type: "audio/mp3" })
+    );
 
     step("step3");
 
