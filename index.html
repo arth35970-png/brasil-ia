@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
 
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
+
 <style>
 body {
     font-family: Segoe UI;
@@ -73,7 +75,7 @@ video, audio {
     <p>1️⃣ Envie o vídeo</p>
     <input type="file" id="file">
     <video id="video" controls></video>
-    <button onclick="iniciar()">Converter</button>
+    <button onclick="start()">Converter</button>
 </div>
 
 <!-- ETAPA 2 -->
@@ -88,7 +90,7 @@ video, audio {
 <div class="step" id="step3">
     <p>3️⃣ Pronto!</p>
     <audio id="audio" controls></audio>
-    <button id="baixar">Baixar</button>
+    <button id="download">Baixar</button>
 
     <div class="history" id="history"></div>
 </div>
@@ -96,122 +98,77 @@ video, audio {
 </div>
 
 <script>
-let file, id, inicio;
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: false });
 
-// elementos
-const video = document.getElementById("video");
-const audio = document.getElementById("audio");
+let file, inicio;
 
 // upload
 document.getElementById("file").onchange = e => {
     file = e.target.files[0];
+    const video = document.getElementById("video");
     video.src = URL.createObjectURL(file);
     video.style.display = "block";
 };
 
-// troca etapa
+// trocar etapa
 function step(id) {
     document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
 
 // iniciar conversão
-async function iniciar() {
+async function start() {
     if (!file) return alert("Escolha um vídeo");
 
-    inicio = Date.now();
     step("step2");
+    inicio = Date.now();
 
-    document.getElementById("status").innerText = "Preparando...";
+    document.getElementById("status").innerText = "Carregando motor...";
 
-    const base64 = await toBase64(file);
-
-    document.getElementById("status").innerText = "Enviando...";
-
-    let res;
-
-    try {
-        res = await fetch("/.netlify/functions/convert", {
-            method: "POST",
-            body: JSON.stringify({
-                input: "base64",
-                file: base64,
-                filename: file.name,
-                outputformat: "mp3"
-            })
-        });
-    } catch (e) {
-        alert("❌ BACKEND NÃO ESTÁ SENDO USADO!\nVerifique Netlify Functions.");
-        step("step1");
-        return;
+    if (!ffmpeg.isLoaded()) {
+        await ffmpeg.load();
     }
 
-    if (!res.ok) {
-        alert("❌ Erro no backend!");
-        step("step1");
-        return;
-    }
+    document.getElementById("status").innerText = "Convertendo...";
 
-    const data = await res.json();
+    ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
 
-    if (!data.data) {
-        alert("❌ API não respondeu!");
-        console.log(data);
-        step("step1");
-        return;
-    }
-
-    id = data.data.id;
-    acompanhar();
-}
-
-// base64
-function toBase64(file) {
-    return new Promise(resolve => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result.split(",")[1]);
-        r.readAsDataURL(file);
-    });
-}
-
-// acompanhar
-function acompanhar() {
-    const intervalo = setInterval(async () => {
-
-        const res = await fetch(`https://api.convertio.co/convert/${id}/status`);
-        const data = await res.json();
-
-        const p = data.data.percent || 0;
-
-        document.getElementById("bar").style.width = p + "%";
-        document.getElementById("status").innerText = p + "%";
+    ffmpeg.setProgress(({ ratio }) => {
+        let percent = Math.round(ratio * 100);
+        document.getElementById("bar").style.width = percent + "%";
+        document.getElementById("status").innerText = percent + "%";
 
         let tempo = (Date.now() - inicio) / 1000;
-
-        if (p > 5) {
-            let total = tempo / (p / 100);
+        if (percent > 5) {
+            let total = tempo / (percent / 100);
             let restante = Math.round(total - tempo);
             document.getElementById("tempo").innerText = "Tempo restante: " + restante + "s";
         }
+    });
 
-        if (data.data.step === "finish") {
-            clearInterval(intervalo);
+    await ffmpeg.run("-i", "input.mp4", "-vn", "-acodec", "libmp3lame", "output.mp3");
 
-            let url = data.data.output.url;
+    const data = ffmpeg.FS("readFile", "output.mp3");
 
-            step("step3");
+    const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mp3" }));
 
-            audio.src = url;
-            audio.style.display = "block";
-            audio.play();
+    step("step3");
 
-            document.getElementById("baixar").onclick = () => window.open(url);
+    const audio = document.getElementById("audio");
+    audio.src = url;
+    audio.style.display = "block";
+    audio.play();
 
-            salvarHistorico(file.name, url);
-            carregarHistorico();
-        }
+    document.getElementById("download").onclick = () => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "audio.mp3";
+        a.click();
+    };
 
-    }, 2000);
+    salvarHistorico(file.name, url);
+    carregarHistorico();
 }
 
 // histórico
