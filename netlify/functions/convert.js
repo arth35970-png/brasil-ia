@@ -10,7 +10,12 @@ export async function handler(event) {
         "Authorization": "Bearer " + API_KEY,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        input: "base64",
+        file: body.file,
+        filename: body.filename,
+        outputformat: "mp3"
+      })
     });
 
     const data = await response.json();
@@ -20,13 +25,10 @@ export async function handler(event) {
       body: JSON.stringify(data)
     };
 
-  } catch (error) {
+  } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: "Erro no backend",
-        details: error.message
-      })
+      body: JSON.stringify({ error: err.message })
     };
   }
 }
