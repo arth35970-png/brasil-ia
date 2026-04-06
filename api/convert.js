@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const API_KEY = "84008ca89da698056074ac469298e281";
+    const API_KEY = 84008ca89da698056074ac469298e281;
 
     const body = JSON.parse(req.body);
 
@@ -20,11 +20,12 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log(data); // 🔥 ajuda a ver erro na Vercel
+    // 🔥 debug importante
+    console.log(data);
 
     if (!data.data || !data.data.id) {
       return res.status(500).json({
-        error: "API não retornou ID",
+        error: "Convertio não retornou ID",
         resposta: data
       });
     }
