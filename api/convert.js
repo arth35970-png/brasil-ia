@@ -2,7 +2,13 @@ export default async function handler(req, res) {
   try {
     const API_KEY = "1ea6dbf1ecfbac7508c7cf4c0f38b70e";
 
-    const body = JSON.parse(req.body);
+    const body = typeof req.body === "string"
+      ? JSON.parse(req.body)
+      : req.body;
+
+    if (!body || !body.file) {
+      return res.status(400).json({ error: "Arquivo não enviado" });
+    }
 
     const response = await fetch("https://api.convertio.co/convert", {
       method: "POST",
@@ -20,12 +26,11 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log("RESPOSTA API:", data);
+    console.log("DEBUG:", data);
 
-    // 🔥 mostra erro real
     if (!data.data || !data.data.id) {
       return res.status(500).json({
-        error: "Erro da Convertio",
+        error: "Convertio falhou",
         detalhes: data
       });
     }
@@ -33,6 +38,8 @@ export default async function handler(req, res) {
     res.status(200).json({ id: data.data.id });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 }
