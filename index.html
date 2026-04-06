@@ -13,7 +13,6 @@ body {
     align-items: center;
     height: 100vh;
 }
-
 .card {
     background: white;
     padding: 25px;
@@ -21,7 +20,6 @@ body {
     width: 380px;
     text-align: center;
 }
-
 .step { display: none; }
 .step.active { display: block; }
 
@@ -33,16 +31,13 @@ button {
     border: none;
     border-radius: 8px;
     margin-top: 10px;
-    cursor: pointer;
 }
 
 .progress {
     height: 10px;
     background: #ddd;
     margin-top: 10px;
-    border-radius: 10px;
 }
-
 .bar {
     height: 100%;
     width: 0%;
@@ -60,12 +55,10 @@ video, audio {
 <body>
 
 <div class="card">
-
 <h3>🇧🇷 Brasil IA Arthur</h3>
 
 <!-- ETAPA 1 -->
 <div class="step active" id="step1">
-    <p>1️⃣ Envie o vídeo</p>
     <input type="file" id="file">
     <video id="video" controls></video>
     <button onclick="enviar()">Converter</button>
@@ -73,14 +66,13 @@ video, audio {
 
 <!-- ETAPA 2 -->
 <div class="step" id="step2">
-    <p>2️⃣ Convertendo...</p>
+    <p>Convertendo...</p>
     <div class="progress"><div class="bar" id="bar"></div></div>
     <p id="status"></p>
 </div>
 
 <!-- ETAPA 3 -->
 <div class="step" id="step3">
-    <p>3️⃣ Pronto!</p>
     <audio id="audio" controls></audio>
     <button id="download">Baixar</button>
 </div>
@@ -90,7 +82,7 @@ video, audio {
 <script>
 let file = null;
 
-// preview do vídeo
+// preview
 document.getElementById("file").onchange = (e) => {
     file = e.target.files[0];
     const video = document.getElementById("video");
@@ -98,13 +90,11 @@ document.getElementById("file").onchange = (e) => {
     video.style.display = "block";
 };
 
-// trocar etapa
 function step(id) {
     document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
 
-// enviar
 async function enviar() {
     if (!file) return alert("Escolha um vídeo!");
 
@@ -113,7 +103,7 @@ async function enviar() {
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
 
-    status.innerText = "📤 Enviando...";
+    status.innerText = "Enviando...";
 
     const reader = new FileReader();
 
@@ -123,6 +113,9 @@ async function enviar() {
 
             const res = await fetch("/api/convert", {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify({
                     file: base64,
                     filename: file.name
@@ -131,32 +124,24 @@ async function enviar() {
 
             const data = await res.json();
 
-            // 🔥 EVITA ERRO undefined
+            console.log("RESPOSTA:", data);
+
             if (!data.id) {
-                status.innerText = "❌ Erro na API";
-                console.log(data);
                 alert("Erro na conversão!");
-                console.log(data);
+                return;
             }
 
-            if (!data.id) {
-    alert("Erro na API!");
-    console.log(data);
-    return;
-}
-
-acompanhar(data.id);
+            acompanhar(data.id);
 
         } catch (err) {
             console.error(err);
-            status.innerText = "❌ Erro ao enviar";
+            alert("Erro ao enviar!");
         }
     };
 
     reader.readAsDataURL(file);
 }
 
-// acompanhar conversão
 function acompanhar(id) {
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
@@ -177,7 +162,7 @@ function acompanhar(id) {
 
             if (!data.data) return;
 
-            status.innerText = "Status: " + data.data.step;
+            status.innerText = data.data.step;
 
             if (data.data.step === "finish") {
                 clearInterval(intervalo);
@@ -201,9 +186,7 @@ function acompanhar(id) {
 
         } catch (err) {
             console.error(err);
-            status.innerText = "Erro ao acompanhar...";
         }
-
     }, 3000);
 }
 </script>
