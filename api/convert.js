@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const API_KEY = "SUA_API_KEI";
+    const API_KEY = "84008ca89da698056074ac469298e281";
 
     const body = JSON.parse(req.body);
 
