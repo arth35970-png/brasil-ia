@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
 
-<!-- FFmpeg -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
+<!-- FFmpeg corrigido -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
 
 <style>
 body {
@@ -36,6 +36,7 @@ button {
     border: none;
     border-radius: 8px;
     margin-top: 10px;
+    cursor: pointer;
 }
 
 .progress {
@@ -76,6 +77,8 @@ video, audio {
     <p>1️⃣ Envie o vídeo</p>
     <input type="file" id="file">
     <video id="video" controls></video>
+
+    <!-- 🔥 BOTÃO CONVERTER -->
     <button onclick="start()">Converter</button>
 </div>
 
@@ -99,14 +102,17 @@ video, audio {
 </div>
 
 <script>
-const { createFFmpeg, fetchFile } = FFmpeg;
-const ffmpeg = createFFmpeg({ log: false });
+const ffmpeg = FFmpeg.createFFmpeg({
+    log: true,
+    corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.2/dist/ffmpeg-core.js"
+});
 
 let file, inicio;
 
 // upload
 document.getElementById("file").onchange = e => {
     file = e.target.files[0];
+
     const video = document.getElementById("video");
     video.src = URL.createObjectURL(file);
     video.style.display = "block";
@@ -118,23 +124,22 @@ function step(id) {
     document.getElementById(id).classList.add("active");
 }
 
-// iniciar
+// iniciar conversão
 async function start() {
-    if (!file) return alert("Escolha um vídeo");
+    if (!file) return alert("Escolha um vídeo!");
 
     step("step2");
     inicio = Date.now();
 
-    document.getElementById("status").innerText = "Carregando motor...";
+    document.getElementById("status").innerText = "Carregando FFmpeg...";
 
-    // carregar ffmpeg
     if (!ffmpeg.isLoaded()) {
         await ffmpeg.load();
     }
 
     document.getElementById("status").innerText = "Convertendo...";
 
-    ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
+    ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(file));
 
     ffmpeg.setProgress(({ ratio }) => {
         let percent = Math.round(ratio * 100);
@@ -147,7 +152,8 @@ async function start() {
         if (percent > 5) {
             let total = tempo / (percent / 100);
             let restante = Math.round(total - tempo);
-            document.getElementById("tempo").innerText = "Tempo restante: " + restante + "s";
+            document.getElementById("tempo").innerText =
+                "Tempo restante: " + restante + "s";
         }
     });
 
