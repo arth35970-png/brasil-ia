@@ -98,13 +98,13 @@ document.getElementById("file").onchange = (e) => {
     video.style.display = "block";
 };
 
-// troca de etapas
+// trocar etapa
 function step(id) {
     document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
 
-// enviar para API
+// enviar
 async function enviar() {
     if (!file) return alert("Escolha um vídeo!");
 
@@ -113,24 +113,38 @@ async function enviar() {
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
 
-    status.innerText = "📤 Enviando arquivo...";
+    status.innerText = "📤 Enviando...";
 
     const reader = new FileReader();
 
     reader.onload = async () => {
-        const base64 = reader.result.split(",")[1];
+        try {
+            const base64 = reader.result.split(",")[1];
 
-        const res = await fetch("/api/convert", {
-            method: "POST",
-            body: JSON.stringify({
-                file: base64,
-                filename: file.name
-            })
-        });
+            const res = await fetch("/api/convert", {
+                method: "POST",
+                body: JSON.stringify({
+                    file: base64,
+                    filename: file.name
+                })
+            });
 
-        const data = await res.json();
+            const data = await res.json();
 
-        acompanhar(data.id);
+            // 🔥 EVITA ERRO undefined
+            if (!data.id) {
+                status.innerText = "❌ Erro na API";
+                console.log(data);
+                alert("Erro na conversão. Veja o console.");
+                return;
+            }
+
+            acompanhar(data.id);
+
+        } catch (err) {
+            console.error(err);
+            status.innerText = "❌ Erro ao enviar";
+        }
     };
 
     reader.readAsDataURL(file);
@@ -138,43 +152,50 @@ async function enviar() {
 
 // acompanhar conversão
 function acompanhar(id) {
-    let progressoFake = 0;
-
-    const bar = document.getElementById("bar");
     const status = document.getElementById("status");
+    const bar = document.getElementById("bar");
 
-    const fake = setInterval(() => {
-        if (progressoFake < 90) {
-            progressoFake += 5;
-            bar.style.width = progressoFake + "%";
+    let fake = 0;
+
+    const fakeProgress = setInterval(() => {
+        if (fake < 90) {
+            fake += 5;
+            bar.style.width = fake + "%";
         }
     }, 500);
 
     const intervalo = setInterval(async () => {
+        try {
+            const res = await fetch("https://api.convertio.co/convert/" + id + "/status");
+            const data = await res.json();
 
-        const res = await fetch("https://api.convertio.co/convert/" + id + "/status");
-        const data = await res.json();
+            if (!data.data) return;
 
-        status.innerText = "Status: " + data.data.step;
+            status.innerText = "Status: " + data.data.step;
 
-        if (data.data.step === "finish") {
-            clearInterval(intervalo);
-            clearInterval(fake);
+            if (data.data.step === "finish") {
+                clearInterval(intervalo);
+                clearInterval(fakeProgress);
 
-            bar.style.width = "100%";
+                bar.style.width = "100%";
 
-            const url = data.data.output.url;
+                const url = data.data.output.url;
 
-            step("step3");
+                step("step3");
 
-            const audio = document.getElementById("audio");
-            audio.src = url;
-            audio.style.display = "block";
-            audio.play();
+                const audio = document.getElementById("audio");
+                audio.src = url;
+                audio.style.display = "block";
+                audio.play();
 
-            document.getElementById("download").onclick = () => {
-                window.open(url);
-            };
+                document.getElementById("download").onclick = () => {
+                    window.open(url);
+                };
+            }
+
+        } catch (err) {
+            console.error(err);
+            status.innerText = "Erro ao acompanhar...";
         }
 
     }, 3000);
