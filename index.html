@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
 
-<!-- FFmpeg corrigido -->
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 
 <style>
 body {
@@ -25,9 +24,6 @@ body {
     text-align: center;
 }
 
-.step { display: none; }
-.step.active { display: block; }
-
 button {
     width: 100%;
     padding: 10px;
@@ -36,7 +32,6 @@ button {
     border: none;
     border-radius: 8px;
     margin-top: 10px;
-    cursor: pointer;
 }
 
 .progress {
@@ -57,12 +52,6 @@ video, audio {
     margin-top: 10px;
     display: none;
 }
-
-.history {
-    margin-top: 15px;
-    font-size: 13px;
-    text-align: left;
-}
 </style>
 </head>
 
@@ -72,137 +61,96 @@ video, audio {
 
 <h3>🇧🇷 Brasil IA Arthur</h3>
 
-<!-- ETAPA 1 -->
-<div class="step active" id="step1">
-    <p>1️⃣ Envie o vídeo</p>
-    <input type="file" id="file">
-    <video id="video" controls></video>
+<input type="file" id="file">
+<video id="video" controls></video>
 
-    <!-- 🔥 BOTÃO CONVERTER -->
-    <button onclick="start()">Converter</button>
-</div>
+<button onclick="start()">Converter</button>
 
-<!-- ETAPA 2 -->
-<div class="step" id="step2">
-    <p>2️⃣ Convertendo...</p>
-    <div class="progress"><div class="bar" id="bar"></div></div>
-    <p id="status"></p>
-    <p id="tempo"></p>
-</div>
+<div class="progress"><div class="bar" id="bar"></div></div>
 
-<!-- ETAPA 3 -->
-<div class="step" id="step3">
-    <p>3️⃣ Pronto!</p>
-    <audio id="audio" controls></audio>
-    <button id="download">Baixar</button>
+<p id="status"></p>
 
-    <div class="history" id="history"></div>
-</div>
+<audio id="audio" controls></audio>
+<button id="download" style="display:none;">Baixar</button>
 
 </div>
 
 <script>
+let file;
+
 const ffmpeg = FFmpeg.createFFmpeg({
     log: true,
-    corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.2/dist/ffmpeg-core.js"
+    corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js"
 });
 
-let file, inicio;
-
-// upload
+// preview
 document.getElementById("file").onchange = e => {
     file = e.target.files[0];
-
     const video = document.getElementById("video");
     video.src = URL.createObjectURL(file);
     video.style.display = "block";
 };
 
-// trocar etapa
-function step(id) {
-    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
-
-// iniciar conversão
 async function start() {
     if (!file) return alert("Escolha um vídeo!");
 
-    step("step2");
-    inicio = Date.now();
+    const status = document.getElementById("status");
+    const bar = document.getElementById("bar");
 
-    document.getElementById("status").innerText = "Carregando FFmpeg...";
+    try {
+        status.innerText = "🔄 Carregando motor (primeira vez demora)...";
 
-    if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
-    }
-
-    document.getElementById("status").innerText = "Convertendo...";
-
-    ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(file));
-
-    ffmpeg.setProgress(({ ratio }) => {
-        let percent = Math.round(ratio * 100);
-
-        document.getElementById("bar").style.width = percent + "%";
-        document.getElementById("status").innerText = percent + "%";
-
-        let tempo = (Date.now() - inicio) / 1000;
-
-        if (percent > 5) {
-            let total = tempo / (percent / 100);
-            let restante = Math.round(total - tempo);
-            document.getElementById("tempo").innerText =
-                "Tempo restante: " + restante + "s";
+        if (!ffmpeg.isLoaded()) {
+            await ffmpeg.load();
         }
-    });
 
-    await ffmpeg.run(
-        "-i", "input.mp4",
-        "-vn",
-        "-acodec", "libmp3lame",
-        "output.mp3"
-    );
+        status.innerText = "📂 Preparando arquivo...";
 
-    const data = ffmpeg.FS("readFile", "output.mp3");
+        ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(file));
 
-    const url = URL.createObjectURL(
-        new Blob([data.buffer], { type: "audio/mp3" })
-    );
+        ffmpeg.setProgress(({ ratio }) => {
+            let percent = Math.round(ratio * 100);
+            bar.style.width = percent + "%";
+            status.innerText = percent + "% convertendo...";
+        });
 
-    step("step3");
+        status.innerText = "⚙️ Convertendo...";
 
-    const audio = document.getElementById("audio");
-    audio.src = url;
-    audio.style.display = "block";
-    audio.play();
+        await ffmpeg.run(
+            "-i", "input.mp4",
+            "-vn",
+            "-acodec", "libmp3lame",
+            "output.mp3"
+        );
 
-    document.getElementById("download").onclick = () => {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "audio.mp3";
-        a.click();
-    };
+        const data = ffmpeg.FS("readFile", "output.mp3");
 
-    salvarHistorico(file.name, url);
-    carregarHistorico();
+        const url = URL.createObjectURL(
+            new Blob([data.buffer], { type: "audio/mp3" })
+        );
+
+        status.innerText = "✅ Pronto!";
+
+        const audio = document.getElementById("audio");
+        audio.src = url;
+        audio.style.display = "block";
+        audio.play();
+
+        const btn = document.getElementById("download");
+        btn.style.display = "block";
+        btn.onclick = () => {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "audio.mp3";
+            a.click();
+        };
+
+    } catch (err) {
+        console.error(err);
+        status.innerText = "❌ Erro ao carregar FFmpeg!";
+        alert("Erro: FFmpeg não carregou. Tente outro navegador (Chrome).");
+    }
 }
-
-// histórico
-function salvarHistorico(nome, url) {
-    let h = JSON.parse(localStorage.getItem("hist") || "[]");
-    h.unshift({nome, url});
-    localStorage.setItem("hist", JSON.stringify(h.slice(0,5)));
-}
-
-function carregarHistorico() {
-    let h = JSON.parse(localStorage.getItem("hist") || "[]");
-    document.getElementById("history").innerHTML =
-        "<b>Histórico:</b><br>" +
-        h.map(i => `<a href="${i.url}" target="_blank">${i.nome}</a>`).join("<br>");
-}
-
-carregarHistorico();
 </script>
 
 </body>
