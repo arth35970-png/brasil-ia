@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<!-- ✅ SCRIPT CORRETO -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 
 <style>
 body {
@@ -32,6 +33,7 @@ button {
     border: none;
     border-radius: 8px;
     margin-top: 10px;
+    cursor: pointer;
 }
 
 .progress {
@@ -66,7 +68,9 @@ video, audio {
 
 <button onclick="start()">Converter</button>
 
-<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="progress">
+    <div class="bar" id="bar"></div>
+</div>
 
 <p id="status"></p>
 
@@ -76,29 +80,37 @@ video, audio {
 </div>
 
 <script>
-let file;
+// ✅ CORRETO
+const { createFFmpeg, fetchFile } = FFmpeg;
 
-const ffmpeg = FFmpeg.createFFmpeg({
+const ffmpeg = createFFmpeg({
     log: true,
-    corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js"
+    corePath: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js"
 });
 
+// ✅ evita erro
+let file = null;
+
 // preview
-document.getElementById("file").onchange = e => {
+document.getElementById("file").onchange = (e) => {
     file = e.target.files[0];
+
     const video = document.getElementById("video");
     video.src = URL.createObjectURL(file);
     video.style.display = "block";
 };
 
 async function start() {
-    if (!file) return alert("Escolha um vídeo!");
+    if (!file) {
+        alert("Escolha um vídeo!");
+        return;
+    }
 
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
 
     try {
-        status.innerText = "🔄 Carregando motor (primeira vez demora)...";
+        status.innerText = "🔄 Carregando FFmpeg (aguarde)...";
 
         if (!ffmpeg.isLoaded()) {
             await ffmpeg.load();
@@ -106,7 +118,7 @@ async function start() {
 
         status.innerText = "📂 Preparando arquivo...";
 
-        ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(file));
+        ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
 
         ffmpeg.setProgress(({ ratio }) => {
             let percent = Math.round(ratio * 100);
@@ -148,7 +160,7 @@ async function start() {
     } catch (err) {
         console.error(err);
         status.innerText = "❌ Erro ao carregar FFmpeg!";
-        alert("Erro: FFmpeg não carregou. Tente outro navegador (Chrome).");
+        alert("Erro: tente usar o navegador Chrome atualizado.");
     }
 }
 </script>
