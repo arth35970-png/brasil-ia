@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const API_KEY = "dd417eade3087e9318c1f71ca3e1714a";
+    const API_KEY = "SUA_API_KEY_AQUI";
 
     const body = JSON.parse(req.body);
 
@@ -20,9 +20,21 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    res.status(200).json({ id: data.data.id });
+    // 🔥 IMPORTANTE (evita undefined)
+    if (!data.data || !data.data.id) {
+      return res.status(500).json({
+        error: "Erro na API",
+        details: data
+      });
+    }
+
+    res.status(200).json({
+      id: data.data.id
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 }
