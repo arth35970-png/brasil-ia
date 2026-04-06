@@ -139,7 +139,13 @@ async function enviar() {
                 return;
             }
 
-            acompanhar(data.id);
+            if (!data.id) {
+    alert("Erro na API!");
+    console.log(data);
+    return;
+}
+
+acompanhar(data.id);
 
         } catch (err) {
             console.error(err);
