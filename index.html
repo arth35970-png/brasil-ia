@@ -135,8 +135,8 @@ async function enviar() {
             if (!data.id) {
                 status.innerText = "❌ Erro na API";
                 console.log(data);
-                alert("Erro na conversão. Veja o console.");
-                return;
+                alert("Erro na conversão!");
+                console.log(data);
             }
 
             if (!data.id) {
