@@ -20,21 +20,18 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // 🔥 IMPORTANTE (evita undefined)
+    console.log(data); // 🔥 ajuda a ver erro na Vercel
+
     if (!data.data || !data.data.id) {
       return res.status(500).json({
-        error: "Erro na API",
-        details: data
+        error: "API não retornou ID",
+        resposta: data
       });
     }
 
-    res.status(200).json({
-      id: data.data.id
-    });
+    res.status(200).json({ id: data.data.id });
 
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 }
