@@ -22,7 +22,6 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-
     if (!data.data?.id) {
       return res.status(500).json({ error: "Falha ao iniciar conversão", detalhes: data });
     }
