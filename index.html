@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Brasil IA Arthur</title>
-
 <style>
 body {
     font-family: Segoe UI;
@@ -22,7 +21,6 @@ body {
 }
 .step { display: none; }
 .step.active { display: block; }
-
 button {
     width: 100%;
     padding: 10px;
@@ -32,7 +30,6 @@ button {
     border-radius: 8px;
     margin-top: 10px;
 }
-
 .progress {
     height: 10px;
     background: #ddd;
@@ -43,7 +40,6 @@ button {
     width: 0%;
     background: #6a0dad;
 }
-
 video, audio {
     width: 100%;
     margin-top: 10px;
@@ -51,9 +47,7 @@ video, audio {
 }
 </style>
 </head>
-
 <body>
-
 <div class="card">
 <h3>🇧🇷 Brasil IA Arthur</h3>
 
@@ -76,13 +70,11 @@ video, audio {
     <audio id="audio" controls></audio>
     <button id="download">Baixar</button>
 </div>
-
 </div>
 
 <script>
 let file = null;
 
-// preview
 document.getElementById("file").onchange = (e) => {
     file = e.target.files[0];
     const video = document.getElementById("video");
@@ -97,55 +89,38 @@ function step(id) {
 
 async function enviar() {
     if (!file) return alert("Escolha um vídeo!");
-
     step("step2");
 
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
-
     status.innerText = "Enviando...";
 
     const reader = new FileReader();
-
     reader.onload = async () => {
         try {
             const base64 = reader.result.split(",")[1];
-
             const res = await fetch("/api/convert", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    file: base64,
-                    filename: file.name
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ file: base64, filename: file.name })
             });
-
             const data = await res.json();
-
-            console.log("RESPOSTA:", data);
-
             if (!data.id) {
                 alert("Erro na conversão!");
                 return;
             }
-
             acompanhar(data.id);
-
         } catch (err) {
             console.error(err);
             alert("Erro ao enviar!");
         }
     };
-
     reader.readAsDataURL(file);
 }
 
 function acompanhar(id) {
     const status = document.getElementById("status");
     const bar = document.getElementById("bar");
-
     let fake = 0;
 
     const fakeProgress = setInterval(() => {
@@ -157,39 +132,27 @@ function acompanhar(id) {
 
     const intervalo = setInterval(async () => {
         try {
-            const res = await fetch("https://api.convertio.co/convert/" + id + "/status");
+            const res = await fetch("/api/status?id=" + id);
             const data = await res.json();
-
             if (!data.data) return;
-
             status.innerText = data.data.step;
-
             if (data.data.step === "finish") {
                 clearInterval(intervalo);
                 clearInterval(fakeProgress);
-
                 bar.style.width = "100%";
-
                 const url = data.data.output.url;
-
                 step("step3");
-
                 const audio = document.getElementById("audio");
                 audio.src = url;
                 audio.style.display = "block";
                 audio.play();
-
-                document.getElementById("download").onclick = () => {
-                    window.open(url);
-                };
+                document.getElementById("download").onclick = () => window.open(url);
             }
-
         } catch (err) {
             console.error(err);
         }
     }, 3000);
 }
 </script>
-
 </body>
 </html>
