@@ -104,7 +104,19 @@ async function enviar() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ file: base64, filename: file.name })
             });
-            const data = await res.json();
+
+            // Teste de retorno antes de usar .json()
+            const text = await res.text();
+            console.log("Resposta bruta:", text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                alert("Erro: resposta não é JSON. Veja no console.");
+                return;
+            }
+
             if (!data.id) {
                 alert("Erro na conversão!");
                 return;
@@ -133,19 +145,33 @@ function acompanhar(id) {
     const intervalo = setInterval(async () => {
         try {
             const res = await fetch("/api/status?id=" + id);
-            const data = await res.json();
+            const text = await res.text();
+            console.log("Status bruto:", text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                console.error("Resposta não é JSON:", err);
+                return;
+            }
+
             if (!data.data) return;
             status.innerText = data.data.step;
+
             if (data.data.step === "finish") {
                 clearInterval(intervalo);
                 clearInterval(fakeProgress);
                 bar.style.width = "100%";
+
                 const url = data.data.output.url;
                 step("step3");
+
                 const audio = document.getElementById("audio");
                 audio.src = url;
                 audio.style.display = "block";
                 audio.play();
+
                 document.getElementById("download").onclick = () => window.open(url);
             }
         } catch (err) {
